@@ -39,13 +39,51 @@ library(zoo)
 updated_data=na.locf(updated_data)
 summary(updated_data)
 
+# define x (predictor variables) and y (response variable)
+
 # identify outliers, influential observations (standardized residual)
 
+# With date and time
+lm_prep=lm(`NO2(GT)` ~ Date+Time+`CO(GT)`+`PT08.S1(CO)`+`NMHC(GT)`+`C6H6(GT)`+`PT08.S2(NMHC)`+`NOx(GT)`+`PT08.S3(NOx)`+`PT08.S4(NO2)`+`PT08.S5(O3)`+T+RH+AH, data=updated_data)
+lm_prep
+
+# Without date and time (PROTOTYPE)
+lm1=lm(`NO2(GT)` ~ `CO(GT)`+`PT08.S1(CO)`+`NMHC(GT)`+`C6H6(GT)`+`PT08.S2(NMHC)`+`NOx(GT)`+`PT08.S3(NOx)`+`PT08.S4(NO2)`+`PT08.S5(O3)`+T+RH+AH, data=updated_data)
+lm1
+
 # identify outliers using leverages
+leveragePlots(lm_prep)
 
+# identify influential observations using standardized residual and residual plots
+# display in paired format
+par(mfrow=c(1,2))
+plot(lm_prep, which=1) # display residual plot
+plot(lm_prep, which=3) # display standardized residual (aka studentized residual) plot
+par(mfrow=c(1,1)) # reset the plot display format
 
-# identify influential observations using standardized residual
 # identify both using cook's distance
+cutoff <- 4/((nrow(updated_data)-length(lm_prep$coefficients))) # identify D values > 4/(n-k-1)
+cutoff # 0.00044833
+plot(lm_prep, which=4, cook.levels=cutoff, main="Cook's Distance Plot") # display the Cook's distance plot
+
+# Data cleaning (TBA)
+# minus one row
+# updated_data=updated_data[-2,]
+# minus multiple rows
+# updated_data=updated_data[-c(2,3,4),]
+
+
+# Residual analysis part 
+# Influence Plot
+influencePlot(lm_prep, id.method="identify", sub="Circle size is proportial to Cook's Distance")
+
+# Normality plots 
+plot(lm_prep, which=2)
+
+# Assess colinearity:
+vif(lm_prep)
+sqrt(vif(lm_prep))>2
+
 
 
 
