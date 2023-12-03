@@ -1,10 +1,7 @@
-#Get data
-air_quality_data <- read.csv("~/Downloads/Processed_AirQualityUCI.csv")
+air_quality_data <- read.csv("~/Downloads/new_processed_air_quality_data.csv")
 attach(air_quality_data)
 
-#Full model
 air_quality_model <- lm(NO2.GT. ~ Date + Time + CO.GT. + NMHC.GT. + NOx.GT. + PT08.S5.O3. + RH)
-#Intercept-only model
 no_var_model <- lm(NO2.GT. ~ 1)
 
 #Forward variable selection
