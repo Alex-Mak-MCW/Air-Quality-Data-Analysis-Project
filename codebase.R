@@ -55,8 +55,15 @@ lm_prep
 # lm1=lm(`NO2(GT)` ~ `CO(GT)`+`PT08.S1(CO)`+`NMHC(GT)`+`C6H6(GT)`+`PT08.S2(NMHC)`+`NOx(GT)`+`PT08.S3(NOx)`+`PT08.S4(NO2)`+`PT08.S5(O3)`+T+RH+AH, data=updated_data)
 # lm1
 
+
 # identify outliers using leverages
-leveragePlots(lm_prep)
+install.packages("ggfortify")
+library (ggfortify)
+autoplot(lm_prep, which=c(1,4,5:6), label.size=3)
+autoplot(lm_prep, which=c(4), label.size=3)
+autoplot(lm_prep, which=c(5,6), label.size=3)
+autoplot(lm_prep, which=c(6), label.size=3)
+
 
 # identify influential observations using standardized residual and residual plots
 # display in paired format
@@ -72,17 +79,23 @@ plot(lm_prep, which=4, cook.levels=cutoff, main="Cook's Distance Plot") # displa
 
 # Data cleaning
 # minus one row (observation) since it's an outlier
-updated_data=updated_data[-5849,]
+updated_data=updated_data[-6130,]
 summary(updated_data) # returned size with 9325
 
 
 # Residual analysis:
 #======================================================================================
 # Influence Plot
-influencePlot(lm_prep, id.method="identify", sub="Circle size is proportial to Cook's Distance")
+if(require(car)){ # Use the car library
+  influencePlot(lm_prep, id.method="identify", sub="Circle size is proportial to Cook's Distance")
+
+}
+
+# Check independence
+durbinWatsonTest(lm_prep)
 
 # Normality plots 
-plot(lm_prep, which=2)
+plot(lm_prep, which=1)
 
 # Assess colinearity using VIF:
 vif(lm_prep)
