@@ -48,7 +48,7 @@ updated_data=data
 
 # identify outliers, influential observations (standardized residual)
 # With date and time
-lm_prep=lm(`NO2(GT)` ~ Date+Time+`CO(GT)`+`PT08.S1(CO)`+`NMHC(GT)`+`C6H6(GT)`+`PT08.S2(NMHC)`+`NOx(GT)`+`PT08.S3(NOx)`+`PT08.S4(NO2)`+`PT08.S5(O3)`+T+RH+AH, data=updated_data)
+lm_prep=lm(`NO2(GT)` ~ Date+Time+`CO(GT)`+`PT08.S1(CO)`+`NMHC(GT)`+`C6H6(GT)`+`PT08.S2(NMHC)`+`NOx(GT)`+`PT08.S3(NOx)`+`PT08.S4(NO2)`+`PT08.S5(O3)`+T, data=updated_data)
 lm_prep
 
 # Without date and time (PROTOTYPE - will be deleted)
@@ -59,7 +59,7 @@ lm_prep
 # identify outliers using leverages
 install.packages("ggfortify")
 library (ggfortify)
-autoplot(lm_prep, which=c(1,4,5:6), label.size=3)
+autoplot(lm_prep, which=c(1,2,5:6), label.size=3)
 autoplot(lm_prep, which=c(4), label.size=3)
 autoplot(lm_prep, which=c(5,6), label.size=3)
 autoplot(lm_prep, which=c(6), label.size=3)
@@ -91,11 +91,15 @@ if(require(car)){ # Use the car library
 
 }
 
+if(require(car)){ # Use the car library
+  crPlots(lm_prep) # Draw partial resdual plots.
+}
+
 # Check independence
 durbinWatsonTest(lm_prep)
 
 # Normality plots 
-plot(lm_prep, which=1)
+plot(lm_prep, which=2)
 
 # Assess colinearity using VIF:
 vif(lm_prep)
