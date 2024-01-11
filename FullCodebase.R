@@ -112,10 +112,10 @@ summary(updated_data)
 # Part 5 and 6: Variable Selection
 #======================================================================================
 
-air_quality_data <- read.csv("~/Downloads/new_processed_air_quality_data.csv")
-attach(air_quality_data)
+#air_quality_data <- read.csv("~/Downloads/new_processed_air_quality_data.csv")
+#attach(air_quality_data)
 
-air_quality_data=updated_data
+# air_quality_data=updated_data
 
 summary(updated_data)
 
@@ -153,7 +153,7 @@ influencePlot(backward_model)
 library(car)
 crPlots(backward_model) 
 
-# Part 8: Make Prediction based on linear regressions (TBA)
+# Part 8: Make Prediction based on linear regressions
 #======================================================================================
 
 # Linear regression
@@ -161,8 +161,9 @@ crPlots(backward_model)
 linear_model <- lm(`NO2(GT)` ~ Date + Time + `CO(GT)` + `NOx(GT)` + `PT08.S5(O3)` + RH, data=updated_data)
 summary(linear_model)
 
+
 # Define Variables
-x = as.matrix(updated_data[, c(which(colnames(updated_data)=='Date'|colnames(updated_data)=='`CO(GT)`'|colnames(updated_data)=='NOx.GT.'|colnames(updated_data)=='PT08.S5.O3.'|colnames(updated_data)=='RH' ))])
+x = as.matrix(updated_data[, c(which(colnames(updated_data)=='Date'|colnames(updated_data)=='CO(GT)'|colnames(updated_data)=='NOx(GT)'|colnames(updated_data)=='PT08.S5(O3)'|colnames(updated_data)=='RH' ))])
 x
 y <-updated_data$`NO2(GT)`
 y
@@ -194,3 +195,10 @@ lasso_model
 plot(cv_lasso)
 coef (cv_lasso,s="lambda.min")
 print(coef(lasso_model)) # find the smallest coef
+
+# Part 9: export input as processed input
+#======================================================================================
+class(updated_data)
+
+write.csv(updated_data, 'processedInput.csv')
+
