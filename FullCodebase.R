@@ -2,9 +2,14 @@
 install.packages("tidyverse")
 library(tidyverse)
 
-# Load the file by using file.choose(), then choose the new_processed_air_quality_data.csv file
+# Load the file by using file.choose(), then choose 
+# the new_processed_air_quality_data.csv file
 data = read_csv(file.choose())
-data # data loaded successfully
+attach(data) # data loaded successfully
+
+data[c(2:16)]
+
+head(data)
 class(data) # returned 'data.frame'
 
 # Part 1: Data Preprocessing
@@ -13,12 +18,12 @@ class(data) # returned 'data.frame'
 summary(data)
 
 # drop the last 2 columns since it has no data at all
-updated_data<-data[c(1:15)]
+updated_data<-data[c(2:16)]
 
 # check the summary to ensure the last 2 columns are removed
 summary(updated_data)
 
-# Find rows with all -200 ("empty rows), then drop them
+# Find rows with all -200 ("empty rows except date and time), then drop them
 updated_data=updated_data[rowSums(updated_data[3:15])>-2600,] # returned 14
 summary(updated_data)
 
@@ -32,11 +37,21 @@ library(zoo)
 updated_data=na.locf(updated_data)
 summary(updated_data)
 
+
+# update date to change Date to the number of days after the first date, use the earliest date
+temp=as.Date(updated_data$Date)
+
+# assign it to a new column call days
+updated_data$Date=as.Date(updated_data$Date)-temp[1]
+updated_data$Date
+
+
+
 # Part 2: Outlier and Influential Observation Detection Part
 #======================================================================================
 
 # enusre the data works for the code later regardless of method employed
-updated_data=data
+# updated_data=data
 
 # identify outliers, influential observations (standardized residual)
 # With date and time
@@ -100,8 +115,12 @@ summary(updated_data)
 air_quality_data <- read.csv("~/Downloads/new_processed_air_quality_data.csv")
 attach(air_quality_data)
 
-air_quality_model <- lm(NO2.GT. ~ Date + Time + CO.GT. + NMHC.GT. + NOx.GT. + PT08.S5.O3. + RH)
-no_var_model <- lm(NO2.GT. ~ 1)
+air_quality_data=updated_data
+
+summary(updated_data)
+
+air_quality_model <- lm(`NO2(GT)` ~ Date + Time + `CO(GT)` + `NMHC(GT)` + `NOx(GT)` + `PT08.S5(O3)` + RH, data=updated_data)
+no_var_model <- lm(`NO2(GT)` ~ 1, data=updated_data)
 
 #Forward variable selection
 forward_model <- step(no_var_model, direction='forward', scope=formula(air_quality_model), trace=0)
@@ -134,8 +153,44 @@ influencePlot(backward_model)
 library(car)
 crPlots(backward_model) 
 
+# Part 8: Make Prediction based on linear regressions (TBA)
+#======================================================================================
+
+# Linear regression
+
+linear_model <- lm(`NO2(GT)` ~ Date + Time + `CO(GT)` + `NOx(GT)` + `PT08.S5(O3)` + RH, data=updated_data)
+summary(linear_model)
+
+# Define Variables
+x = as.matrix(updated_data[, c(which(colnames(updated_data)=='Date'|colnames(updated_data)=='`CO(GT)`'|colnames(updated_data)=='NOx.GT.'|colnames(updated_data)=='PT08.S5.O3.'|colnames(updated_data)=='RH' ))])
+x
+y <-updated_data$`NO2(GT)`
+y
 
 
+# Ridge Regression
+# Find the best lambda using cross-validation
+library(glmnet)
+cv_ridge <- cv.glmnet(x, y, alpha = 0, nfolds = 10)
 
+best_lambda_ridge <- cv_ridge$lambda.min
+best_lambda_ridge
+ridge_model <- glmnet(x, y, alpha = 0, lambda = best_lambda_ridge)
+ridge_model
 
+plot(cv_ridge)
+coef (cv_ridge,s="lambda.min")
+print(coef(ridge_model)) # find the smallest coef
 
+# Lasso Regression
+# Find the best lambda using cross-validation
+cv_lasso <- cv.glmnet(x, y, alpha = 1, nfolds = 10)
+
+best_lambda_lasso <- cv_lasso$lambda.min
+best_lambda_lasso
+lasso_model <- glmnet(x, y, alpha = 1, lambda = best_lambda_lasso)
+lasso_model
+
+plot(cv_lasso)
+coef (cv_lasso,s="lambda.min")
+print(coef(lasso_model)) # find the smallest coef
