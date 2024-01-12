@@ -6,7 +6,6 @@
 * This project is initially served as a statisitcal analysis project completed in a group, in STAT 537 (Statistical Methods for Applied Research II) class taught in University of Alberta back in December 2023.
 * This project is further modified by Alex Mak to add data visualizations using Tableau, as well as using extensions of linear regression model (LASSO and ridge regressions) to perform variable selection for obtaining the final linear model.
 <br></br>
-<br></br>
 
 # 2. Structure 
 * The Data folder stores 2 files, input.csv and processedInput.csv
