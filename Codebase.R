@@ -202,3 +202,4 @@ class(updated_data)
 
 write.csv(updated_data, 'processedInput.csv')
 
+updated_data$Date

@@ -381,7 +381,7 @@
       <layout-options>
         <title>
           <formatted-text>
-            <run>NO2 Concentration Over Days</run>
+            <run>NO2 Concentration Over time</run>
           </formatted-text>
         </title>
       </layout-options>
