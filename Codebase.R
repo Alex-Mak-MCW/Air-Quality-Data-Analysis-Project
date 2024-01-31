@@ -2,14 +2,9 @@
 install.packages("tidyverse")
 library(tidyverse)
 
-# Load the file by using file.choose(), then choose 
-# the new_processed_air_quality_data.csv file
+# Load the file by using file.choose(), then choose the new_processed_air_quality_data.csv file
 data = read_csv(file.choose())
-attach(data) # data loaded successfully
-
-data[c(2:16)]
-
-head(data)
+data # data loaded successfully
 class(data) # returned 'data.frame'
 
 # Part 1: Data Preprocessing
@@ -18,13 +13,15 @@ class(data) # returned 'data.frame'
 summary(data)
 
 # drop the last 2 columns since it has no data at all
-updated_data<-data[c(2:16)]
+updated_data<-data[c(1:15)]
 
 # check the summary to ensure the last 2 columns are removed
 summary(updated_data)
 
-# Find rows with all -200 ("empty rows except date and time), then drop them
-updated_data=updated_data[rowSums(updated_data[3:15])>-2600,] # returned 14
+# Find rows with all -200 ("empty rows), then drop them
+updated_data=updated_data[rowSums(updated_data[4:15])>-2600,] # returned 14
+
+updated_data
 summary(updated_data)
 
 # replace all the remaining -200 with NA
@@ -37,21 +34,11 @@ library(zoo)
 updated_data=na.locf(updated_data)
 summary(updated_data)
 
-
-# update date to change Date to the number of days after the first date, use the earliest date
-temp=as.Date(updated_data$Date)
-
-# assign it to a new column call days
-updated_data$Date=as.Date(updated_data$Date)-temp[1]
-updated_data$Date
-
-
-
 # Part 2: Outlier and Influential Observation Detection Part
 #======================================================================================
 
 # enusre the data works for the code later regardless of method employed
-# updated_data=data
+updated_data=data
 
 # identify outliers, influential observations (standardized residual)
 # With date and time
@@ -111,16 +98,12 @@ summary(updated_data)
 
 # Part 5 and 6: Variable Selection
 #======================================================================================
+air_quality_data=read_csv(file.choose())
 
-#air_quality_data <- read.csv("~/Downloads/new_processed_air_quality_data.csv")
-#attach(air_quality_data)
+air_quality_model=lm(`NO2(GT)` ~ Date+Time+`CO(GT)`+`NMHC(GT)`+`NOx(GT)`+`PT08.S3(NOx)`+RH, data=air_quality_data)
 
-# air_quality_data=updated_data
-
-summary(updated_data)
-
-air_quality_model <- lm(`NO2(GT)` ~ Date + Time + `CO(GT)` + `NMHC(GT)` + `NOx(GT)` + `PT08.S5(O3)` + RH, data=updated_data)
-no_var_model <- lm(`NO2(GT)` ~ 1, data=updated_data)
+# air_quality_model <- lm(NO2.GT. ~ Date + Time + CO.GT. + NMHC.GT. + NOx.GT. + PT08.S5.O3. + RH)
+no_var_model <- lm(`NO2(GT)` ~ 1, data=air_quality_data)
 
 #Forward variable selection
 forward_model <- step(no_var_model, direction='forward', scope=formula(air_quality_model), trace=0)
@@ -134,8 +117,8 @@ summary(backward_model)
 
 #Both-direction variable selection
 both_model <- step(no_var_model, direction='both', scope=formula(air_quality_model), trace=0)
-backward_model$anova
-summary(backward_model)
+both_model$anova
+summary(both_model)
 
 # Part 7: Residual analysis for the final model 
 #======================================================================================
@@ -158,14 +141,21 @@ crPlots(backward_model)
 
 # Linear regression
 
-linear_model <- lm(`NO2(GT)` ~ Date + Time + `CO(GT)` + `NOx(GT)` + `PT08.S5(O3)` + RH, data=updated_data)
-summary(linear_model)
+# Compare the regression perforamnce between the full model and refined model
+lm_full=lm(`NO2(GT)` ~ Date+Time+`CO(GT)`+`PT08.S1(CO)`+`NMHC(GT)`+`C6H6(GT)`+`PT08.S2(NMHC)`+`NOx(GT)`+`PT08.S3(NOx)`+`PT08.S4(NO2)`+`PT08.S5(O3)`+T, data=air_quality_data)
+lm_full
+
+# select the backward_model as the refined model
+library(broom)
+glance(backward_model)
+glance(lm_full)
+
 
 
 # Define Variables
-x = as.matrix(updated_data[, c(which(colnames(updated_data)=='Date'|colnames(updated_data)=='CO(GT)'|colnames(updated_data)=='NOx(GT)'|colnames(updated_data)=='PT08.S5(O3)'|colnames(updated_data)=='RH' ))])
+x = as.matrix(air_quality_data[, c(which(colnames(air_quality_data)=='Date'|colnames(air_quality_data)=='CO.GT.'|colnames(air_quality_data)=='NOx.GT.'|colnames(air_quality_data)=='PT08.S5.O3.'|colnames(air_quality_data)=='RH' ))])
 x
-y <-updated_data$`NO2(GT)`
+y <-air_quality_data$`NO2(GT)`
 y
 
 
@@ -195,11 +185,3 @@ lasso_model
 plot(cv_lasso)
 coef (cv_lasso,s="lambda.min")
 print(coef(lasso_model)) # find the smallest coef
-
-# Part 9: export input as processed input
-#======================================================================================
-class(updated_data)
-
-write.csv(updated_data, 'processedInput.csv')
-
-updated_data$Date
