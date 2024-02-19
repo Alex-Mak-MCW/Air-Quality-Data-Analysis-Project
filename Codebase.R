@@ -96,6 +96,10 @@ vif(lm_prep)
 vif(lm_prep)>5
 summary(updated_data)
 
+# Export data in (ETL)
+library(readr)
+write.csv(updated_data, file="ProcessedInput.csv")
+
 # Part 5 and 6: Variable Selection
 #======================================================================================
 air_quality_data=read_csv(file.choose())
@@ -110,7 +114,7 @@ forward_model <- step(no_var_model, direction='forward', scope=formula(air_quali
 forward_model$anova
 summary(forward_model)
 
-#Forward variable selection
+#Backward variable selection
 backward_model <- step(air_quality_model, direction='backward', scope=formula(air_quality_model), trace=0)
 backward_model$anova
 summary(backward_model)
@@ -141,23 +145,68 @@ crPlots(backward_model)
 
 # Linear regression
 
-# Compare the regression perforamnce between the full model and refined model
-lm_full=lm(`NO2(GT)` ~ Date+Time+`CO(GT)`+`PT08.S1(CO)`+`NMHC(GT)`+`C6H6(GT)`+`PT08.S2(NMHC)`+`NOx(GT)`+`PT08.S3(NOx)`+`PT08.S4(NO2)`+`PT08.S5(O3)`+T, data=air_quality_data)
-lm_full
+install.packages("caret")
+library(caret)
 
-# select the backward_model as the refined model
-library(broom)
-glance(backward_model)
-glance(lm_full)
+summary(air_quality_data)
 
-
-
-# Define Variables
-x = as.matrix(air_quality_data[, c(which(colnames(air_quality_data)=='Date'|colnames(air_quality_data)=='CO.GT.'|colnames(air_quality_data)=='NOx.GT.'|colnames(air_quality_data)=='PT08.S5.O3.'|colnames(air_quality_data)=='RH' ))])
+# Define Variables (naming issue- TBF)
+x = as.matrix(air_quality_data[, c(which(colnames(air_quality_data)=='Date'|colnames(air_quality_data)=='CO(GT)'|colnames(air_quality_data)=='NOx(GT)'|colnames(air_quality_data)=='PT08.S5(O3)'|colnames(air_quality_data)=='RH' ))])
 x
 y <-air_quality_data$`NO2(GT)`
 y
 
+# Perform the test-train split (80% training, 20% testing)
+splitIndex <- createDataPartition(air_quality_data$`NO2(GT)`, p = 0.8, list = FALSE)
+train_data <- data[splitIndex, ]
+test_data <- data[-splitIndex, ]
+
+train_data
+
+# Check the dimensions of the training and testing sets
+dim(train_data) # return 7462, 16
+dim(test_data) # return 1864, 16
+
+# -----------------
+# Fit a linear regression model on the training data
+# model_train <- lm(y ~ x, data = train_data)
+
+model_train <- lm(`NO2(GT)` ~ Date+`CO(GT)`+`NOx(GT)`+`PT08.S5(O3)`+RH, data = train_data)
+
+model_train
+# Make predictions on the test data
+refined_predictions <- predict(model_train, newdata = test_data)
+
+# Compute Mean Squared Error (MSE)
+refined_mse <- mean((testData$`NO2(GT)` - refined_predictions)^2)
+sqrt(refined_mse)
+
+
+# -----------------
+
+# Compare the regression perforamnce between the full model and refined model
+lm_full=lm(`NO2(GT)` ~ Date+Time+`CO(GT)`+`PT08.S1(CO)`+`NMHC(GT)`+`C6H6(GT)`+`PT08.S2(NMHC)`+`NOx(GT)`+`PT08.S3(NOx)`+`PT08.S4(NO2)`+`PT08.S5(O3)`+T, data=train_data)
+lm_full
+
+lm_prep=lm(`NO2(GT)` ~ Date+Time+`CO(GT)`+`PT08.S1(CO)`+`NMHC(GT)`+`C6H6(GT)`+`PT08.S2(NMHC)`+`NOx(GT)`+`PT08.S3(NOx)`+`PT08.S4(NO2)`+`PT08.S5(O3)`+T, data=updated_data)
+lm_prep
+
+regular_predictions <- predict(lm_prep, newdata = test_data)
+
+regular_mse <- mean((testData$`NO2(GT)` - regular_predictions)^2)
+sqrt(regular_mse)
+
+summary(backward_model)
+
+# select the backward_model as the refined model
+library(broom)
+glance(model_train)
+glance(lm_prep)
+
+AIC(model_train)
+AIC(lm_prep)
+
+cat("The refined model is",((AIC(lm_prep)-AIC(model_train))/ AIC(lm_prep))*100,"% better than the original model")
 
 # Ridge Regression
 # Find the best lambda using cross-validation
