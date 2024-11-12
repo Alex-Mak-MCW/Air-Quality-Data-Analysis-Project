@@ -1,0 +1,262 @@
+---
+title: "Codebase_Draft.rmd"
+output: pdf_document
+  # html_document: default
+  # pdf_document
+date: "2024-11-11"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Air quality Data Analysis Project
+
+This project performs exploratory data analysis (EDA), statistical analysis, and make predictions with regression models on a time-series air quality dataset. 
+
+## Part 1: Loading Required packages
+
+Loading Required R Packages:
+
+1. tidyverse
+2. zoo
+3. ggfotify
+4. car
+5. caret
+6. glmnet
+
+```{r part 1, results='hide', warning=FALSE}
+# Install and load required libraries (install only if not already installed)
+required_packages <- c("tidyverse", "zoo", "ggfortify", "car", "caret", "glmnet")
+new_packages <- required_packages[!(required_packages %in% installed.packages()[, "Package"])]
+if (length(new_packages)) install.packages(new_packages)
+lapply(required_packages, library, character.only = TRUE)
+```
+## Part 2: Outlier and Influential Observation Detection
+
+Steps Done:
+
+1. Data Colleciton
+2. Data Preprocessing (Cleaning, imputation, transformation)
+3. Outlier and Influtnetial Observation Detection
+
+```{r part 2}
+# Load data and check if loaded correctly
+# data <- read_csv(file.choose())
+data<- read_csv("/Users/alexmak/Desktop/CMPUT/School/Year_5/STAT_537/project/PersonalProject/Air-Quality-Data-Analysis-Project/Data/Input.csv")
+# stopifnot(class(data) == "data.frame") # Ensure the data type is correct
+print(summary(data)) # Check initial summary
+
+# Data Preprocessing
+# Drop last 2 columns and remove rows where all specific columns contain -200
+updated_data <- data[1:15]
+updated_data <- updated_data[rowSums(updated_data[4:15]) > -2600, ]
+
+# Replace -200 values with NA and interpolate using last observation carry forward
+updated_data[updated_data == -200.00] <- NA
+updated_data <- na.locf(updated_data)
+
+# Outlier Detection and Data Cleaning
+# lm_prep <- lm(`NO2(GT)` ~ ., data = updated_data) # Simplified model formula for all columns
+
+lm_prep=lm(`NO2(GT)` ~ Date+Time+`CO(GT)`+`PT08.S1(CO)`+`NMHC(GT)`+`C6H6(GT)`+`PT08.S2(NMHC)`+`NOx(GT)`+`PT08.S3(NOx)`+`PT08.S4(NO2)`+`PT08.S5(O3)`+T, data=updated_data)
+
+# Visualize model diagnostics
+autoplot(lm_prep, which = c(1, 2, 4, 5:6), label.size = 3)
+
+# Identify influential observations and handle outliers
+cutoff <- 4 / (nrow(updated_data) - length(lm_prep$coefficients))
+plot(lm_prep, which = 4, cook.levels = cutoff, main = "Cook's Distance Plot")
+
+# Remove specific influential rows based on Cook's distance or other criteria
+influential_points <- which(cooks.distance(lm_prep) > cutoff)
+updated_data <- updated_data[-influential_points, ]
+
+```
+## Part 3: Residual Analysis
+
+Analyze residuals through:
+
+1. Influence plot
+2. Partial resdual plots.
+3. Durbin Watson's test to check independence
+4. Normality test
+
+```{r part 3, warning=FALSE}
+# Residual Analysis and Collinearity Check
+
+# Influence Plot
+if(require(car)){ # Use the car library
+  influencePlot(lm_prep, id.method="identify", sub="Circle size is proportial to Cook's Distance")
+}
+
+if(require(car)){ # Use the car library
+  crPlots(lm_prep) # Draw partial residual plots.
+}
+
+# Check independence
+durbinWatsonTest(lm_prep)
+
+# Normality plots 
+plot(lm_prep, which=2)
+
+```
+
+## Part 4: Multicolinearity Assessment
+
+Access Multicolinearity through Variance Inflation Factor (VIF)
+
+```{r part 4}
+library(car)
+# Assess colinearity using VIF:
+vif(lm_prep)
+vif(lm_prep)>5
+summary(updated_data)
+
+# Save cleaned data
+write_csv(updated_data, "ProcessedInput2.csv")
+```
+
+## Part 5: Variable Selection
+
+Perform variable selection by implementing
+
+1. Forward Selection
+2. Backward Elimination
+3. Stepwise Regression (Both-direction variable selection)
+
+Then determining the best model, which is the one with backward elimination
+
+```{r part 5, results='hide'}
+# Variable Selection
+air_quality_data <- updated_data # Ensure consistency with processed data
+full_model <- lm(`NO2(GT)` ~ ., data = air_quality_data)
+null_model <- lm(`NO2(GT)` ~ 1, data = air_quality_data)
+
+# Forward, backward, and stepwise selection
+forward_model <- step(null_model, direction = 'forward', scope = formula(full_model), trace = 0)
+backward_model <- step(full_model, direction = 'backward', trace = 0)
+both_model <- step(null_model, direction = 'both', scope = formula(full_model), trace = 0)
+
+# Display selection summaries
+print(summary(forward_model))
+print(summary(backward_model))
+print(summary(both_model))
+
+```
+
+
+## Part 6: Residual analysis for the final model 
+
+Analzyed residual of the chosen model after variable selection (backward elimination)
+
+Make 4 plots at the same time: 
+
+1. Residuals vs Fitted
+2. Q-Q plot
+3. Residuals vs Leverage
+4. Cook's dist vs Leverage
+
+```{r part 6}
+# Residual analysis for the final model
+autoplot(backward_model, which = c(1:2, 5:6), label.size = 3)
+plot(backward_model, which = 4)
+influencePlot(backward_model)
+if (require(car)) crPlots(backward_model)
+```
+
+## Part 7: Train-test split (80-20)
+
+Split Dataset to training and testing subset with 80-20 ratio
+
+```{r part 7} 
+# Train-test split (80-20)
+splitIndex <- createDataPartition(air_quality_data$`NO2(GT)`, p = 0.8, list = FALSE)
+train_data <- air_quality_data[splitIndex, ]
+test_data <- air_quality_data[-splitIndex, ]
+```
+
+## Part 8: Linear Regression Prediction and evaluation
+
+Compare the R-squared & root mean sqaure error (RMSE) values between the full model and the reduced model built after variable selection
+
+```{r part 8} 
+cat("Regression Performance of the Full Model:\n")
+lm_prep=lm(`NO2(GT)` ~ Date+Time+`CO(GT)`+`PT08.S1(CO)`+`NMHC(GT)`+`C6H6(GT)`+`PT08.S2(NMHC)`+`NOx(GT)`+`PT08.S3(NOx)`+`PT08.S4(NO2)`+`PT08.S5(O3)`+T, data=train_data)
+
+regular_predictions <- predict(lm_prep, newdata = test_data)
+
+regular_mse <- mean((test_data$`NO2(GT)` - regular_predictions)^2)
+cat("Root Mean Squared Error (RMSE):", sqrt(regular_mse), "\n")
+
+# Compute the total sum of squares (TSS)
+tss <- sum((test_data$`NO2(GT)` - mean(test_data$`NO2(GT)`))^2)
+
+# Compute the residual sum of squares (RSS)
+rss_before <- sum((test_data$`NO2(GT)` - regular_predictions)^2)
+
+# Calculate R-squared
+r_squared_before <- 1 - (rss_before / tss)
+
+# Print the R-squared value
+cat("R-Squared Value:", r_squared_before, "\n")
+
+
+# For the refined model
+cat("\nRegression Performance of the Refined Model:\n")
+# Train model and make predictions
+model_train <- lm(`NO2(GT)` ~ Date + `CO(GT)` + `NOx(GT)` + `PT08.S5(O3)` + RH, data = train_data)
+refined_predictions <- predict(model_train, newdata = test_data)
+
+# Evaluate model performance
+mse <- mean((test_data$`NO2(GT)` - refined_predictions)^2)
+rmse <- sqrt(mse)
+cat("Root Mean Squared Error (RMSE):", rmse, "\n")
+
+# # Compute the total sum of squares (TSS)
+# tss <- sum((testData$`NO2(GT)` - mean(testData$`NO2(GT)`))^2)
+
+# Compute the residual sum of squares (RSS)
+rss_after <- sum((test_data$`NO2(GT)` - refined_predictions)^2)
+
+# Calculate R-squared
+r_squared_after <- 1 - (rss_after / tss)
+
+# Print the R-squared value
+cat("R-Squared Value:", r_squared_after, "\n")
+
+```
+
+<!-- ## Part 9: Ridge and LASSO Regression -->
+
+<!-- To be fixed -->
+
+<!-- ```{r part 9, , warning=FALSE}  -->
+<!-- # Ridge and Lasso Regression -->
+<!-- x <- as.matrix(air_quality_data[, c("Date", "CO(GT)", "NOx(GT)", "PT08.S5(O3)", "RH")]) -->
+<!-- y <- air_quality_data$`NO2(GT)` -->
+
+<!-- cv_ridge <- cv.glmnet(x, y, alpha = 0, nfolds = 10) -->
+<!-- best_lambda_ridge <- cv_ridge$lambda.min -->
+<!-- ridge_model <- glmnet(x, y, alpha = 0, lambda = best_lambda_ridge) -->
+<!-- plot(cv_ridge) -->
+
+<!-- cv_lasso <- cv.glmnet(x, y, alpha = 1, nfolds = 10) -->
+<!-- best_lambda_lasso <- cv_lasso$lambda.min -->
+<!-- lasso_model <- glmnet(x, y, alpha = 1, lambda = best_lambda_lasso) -->
+<!-- plot(cv_lasso) -->
+
+<!-- cat("Best Ridge Lambda:", best_lambda_ridge, "\n") -->
+<!-- cat("Best Lasso Lambda:", best_lambda_lasso, "\n") -->
+<!-- ``` -->
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
