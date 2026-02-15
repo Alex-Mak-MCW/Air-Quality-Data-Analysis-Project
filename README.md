@@ -19,4 +19,8 @@
 * Codebase.R is the R codebase where all of the project's task (exploratory data analysis, statistical analysis and inferences) are executed here.
 <br></br>
 * Readme.md is the file you are reading now :)
+ 
+# 3. Dashboard 
+* An interactive dashboard is now published on Tableau Public. Please visit the following link if you are interested! (https://public.tableau.com/app/profile/alex.mak4100/viz/NitrogenDioxideDataAnalysisDashboard/MainPage?publish=yes)
 
+<img width="1371" height="777" alt=" " src="https://github.com/user-attachments/assets/e23167b8-d213-4676-b380-fc62aa405e82" />
